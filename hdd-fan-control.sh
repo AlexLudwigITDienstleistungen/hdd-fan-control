@@ -3,83 +3,86 @@ Config=/etc/hdd-fan-control/hdd-fan-control.config
 ConfigRun=/run/hdd-fan-control.config
 ConfigCurrent="empty"
 LogDir="empty"
+Hdparm="/sbin/hdparm"
+Hddtemp="/usr/sbin/hddtemp"
 
 
 control()
 {
-        echo "`date +"%x %X"` Config imported" >> $LogDir
-        HddState=`/sbin/hdparm -C $Hdd`
-        if [ "`echo $HddState | cut -c 27-`" = "standby" ];
-        then
-                        echo "`date +"%x %X"` Drive $Hdd is in Standby. Setting to $PwmLow." >> $LogDir
-                        printf "`date +"%x %X"`" >> $LogDir
-                        echo "`echo $PwmLow >> $PwmDev`" >> $LogDir
-        else
-                        HddTemp=`/usr/sbin/hddtemp -n -q $Hdd`
-                        if [ $HddTemp -lt $TempMin ];
-                        then
-                                        printf "`date +"%x %X"` Temperature is to cold. Setting to $PwmLow" >> $LogDir
-                                        echo "`echo $PwmLow >> $PwmDev`" >> $LogDir
-                        fi
-                        if [ $HddTemp -ge $TempMin ];
-                        then
-                                        if [ $HddTemp -gt $TempMax ];
-                                        then
-                                                        printf "`date +"%x %X"` Temperature is to high. Setting to $PwmMax" >> $LogDir
-                                                        echo "`echo $PwmMax >> $PwmDev`" >> $LogDir
-                                        else
-                                                        PwmBand=`echo "$PwmMax - $PwmMin" | bc`
-                                                        TempBand=`echo "$TempMax - $TempMin" | bc`
-                                                        PwmCount=`echo "$PwmBand / $TempBand" | bc`
-                                                        TempCommand=`echo "$HddTemp - $TempMin" | bc`
-                                                        TempDist=`echo "$TempCommand * $PwmCount" | bc`
-                                                        PwmCommand=`echo "$TempDist + $PwmMin" | bc`
-                                                        PwmCurrent=`cat < $PwmDev`
-                                                        if [ $PwmCurrent -eq $PwmLow ];
-                                                        then
-                                                                        if [ $PwmCommand -ge $PwmStart ];
-                                                                        then
-                                                                                   printf "`date +"%x %X"` Fan was in standby. Setting to $PwmCommand:" >> $LogDir
-                                                                                   PwmResult=`echo $PwmCommand >> $PwmDev`
-                                                                                   if [ "$PwmResult" = "" ];
-                                                                                   then
-                                                                                   echo "OK." >> $LogDir
-                                                                                   else
-                                                                                   echo "$PwmResult" >> $LogDir
-                                                                                   fi
-                                                                        else
-                                                                                   printf "`date +"%x %X"` Fan was in standby. Wakeup with $PwmStart:" >> $LogDir
-                                                                                   PwmResult=`echo $PwmStart >> $PwmDev`
-                                                                                   if [ "$PwmResult" = "" ];
-                                                                                   then
-                                                                                   echo "OK." >> $LogDir
-                                                                                   else
-                                                                                   echo "$PwmResult" >> $LogDir
-                                                                                   fi
-                                                                                   echo "`date +"%x %X"` Waiting 5 seconds."
-                                                                                   `sleep 4s`
-                                                                                   printf "`date +"%x %X"` Fan is now running. Setting to $PwmCommand:" >> $LogDir
-                                                                                   PwmResult=`echo $PwmCommand >> $PwmDev`
-                                                                                   if [ "$PwmResult" = "" ];
-                                                                                   then
-                                                                                   echo "OK." >> $LogDir
-                                                                                   else
-                                                                                   echo "$PwmResult" >> $LogDir
-                                                                                   fi
-                                                                        fi
-                                                        else
-                                                                        printf "`date +"%x %X"` Setting PWM to $PwmCommand:" >> $LogDir
-                                                                        PwmResult=`echo $PwmCommand >> $PwmDev`
-                                                                        if [ "$PwmResult" = "" ];
-                                                                        then
-                                                                                   echo "OK." >> $LogDir
-                                                                        else
-                                                                                   echo "$PwmResult" >> $LogDir
-                                                                        fi
-                                                        fi
-                                        fi
-                        fi
-        fi
+	echo "`date +"%x %X"` Config imported" >> $LogDir
+	HddState=`$Hdparm -C $Hdd`
+	if [ "`echo $HddState | cut -c 27-`" = "standby" ];
+	then
+		echo "`date +"%x %X"` Drive $Hdd is in Standby. Setting to $PwmLow." >> $LogDir
+		printf "`date +"%x %X"`" >> $LogDir
+		echo "`echo $PwmLow >> $PwmDev`" >> $LogDir
+	else
+		HddTemp=`$Hddtemp -n -q $Hdd`
+		if [ $HddTemp -lt $TempMin ];
+		then
+				printf "`date +"%x %X"` Temperature is to cold. Setting to $PwmLow" >> $LogDir
+				echo "`echo $PwmLow >> $PwmDev`" >> $LogDir
+		else
+			if [ $HddTemp -ge $TempMin ];
+			then
+				if [ $HddTemp -gt $TempMax ];
+				then
+					printf "`date +"%x %X"` Temperature is to high. Setting to $PwmMax" >> $LogDir
+					echo "`echo $PwmMax >> $PwmDev`" >> $LogDir
+				else
+					PwmBand=`echo "$PwmMax - $PwmMin" | bc`
+					TempBand=`echo "$TempMax - $TempMin" | bc`
+					PwmCount=`echo "$PwmBand / $TempBand" | bc`
+					TempCommand=`echo "$HddTemp - $TempMin" | bc`
+					TempDist=`echo "$TempCommand * $PwmCount" | bc`
+					PwmCommand=`echo "$TempDist + $PwmMin" | bc`
+					PwmCurrent=`cat < $PwmDev`
+					if [ $PwmCurrent -eq $PwmLow ];
+					then
+						if [ $PwmCommand -ge $PwmStart ];
+						then
+							printf "`date +"%x %X"` Fan was in standby. Setting to $PwmCommand:" >> $LogDir
+							PwmResult=`echo $PwmCommand >> $PwmDev`
+							if [ "$PwmResult" = "" ];
+							then
+								echo "OK." >> $LogDir
+							else
+								echo "$PwmResult" >> $LogDir
+							fi
+						else
+							printf "`date +"%x %X"` Fan was in standby. Wakeup with $PwmStart:" >> $LogDir
+							PwmResult=`echo $PwmStart >> $PwmDev`
+							if [ "$PwmResult" = "" ];
+							then
+								echo "OK." >> $LogDir
+							else
+								echo "$PwmResult" >> $LogDir
+							fi
+							echo "`date +"%x %X"` Waiting 5 seconds."
+							`sleep 4s`
+							printf "`date +"%x %X"` Fan is now running. Setting to $PwmCommand:" >> $LogDir
+							PwmResult=`echo $PwmCommand >> $PwmDev`
+							if [ "$PwmResult" = "" ];
+							then
+								echo "OK." >> $LogDir
+							else
+								echo "$PwmResult" >> $LogDir
+							fi
+						fi
+					else
+						printf "`date +"%x %X"` Setting PWM to $PwmCommand:" >> $LogDir
+						PwmResult=`echo $PwmCommand >> $PwmDev`
+						if [ "$PwmResult" = "" ];
+						then
+							echo "OK." >> $LogDir
+						else
+							echo "$PwmResult" >> $LogDir
+						fi
+					fi
+				fi
+			fi
+		fi
+	fi
 }
 
 
@@ -92,14 +95,14 @@ fi
 case $1 in
 	--config|-c)
 		while true; do
-                        while true; do
-                                printf 'Enter the HDD to control Fan (/dev/sdx):'
-                                read Hdd
+			while true; do
+				printf 'Enter the HDD to control Fan (/dev/sdx):'
+				read Hdd
 				HddPath=`echo "$Hdd" | cut -c -7`
-                                if [ "$HddPath" =  "/dev/sd" ];
-                                then
+				if [ "$HddPath" =  "/dev/sd" ];
+				then
 					HddVolume=`echo "$Hdd" | cut -c 9-`
-                                        if [ "$HddVolume" = "" ];
+					if [ "$HddVolume" = "" ];
 					then	
 						if [ "$ConfigCurrent" = "empty" ];
 						then
@@ -107,31 +110,31 @@ case $1 in
 						else
 							ConfigCurrent="$ConfigCurrent\n[Device]\nHarddisk=$Hdd"
 						fi
-                                        	break
+						break
 					else
-                                                echo "You must select a HDD device not a volume."
-                                        fi
-                                else
+						echo "You must select a HDD device not a volume."
+					fi
+				else
 					if [ "$HddPath" = "/dev/hd" ];
 					then
 						HddVolume=`echo "$Hdd" | cut -c 9-`
 						if [ "$HddVolume" = "" ];
 						then
-                                     			if [ "$ConfigCurrent" = "empty" ];
-                                        		then
-                                                		ConfigCurrent="[Device]\nHarddisk=$Hdd"
-                                		        else
-                		                                ConfigCurrent="$ConfigCurrent\n[Device]\nHarddisk=$Hdd"
-		                                        fi
+				     			if [ "$ConfigCurrent" = "empty" ];
+							then
+								ConfigCurrent="[Device]\nHarddisk=$Hdd"
+							else
+								ConfigCurrent="$ConfigCurrent\n[Device]\nHarddisk=$Hdd"
+							fi
 							break
 						else
 							echo "You must select a HDD device not a volume."
 						fi
 					else
-                                        	echo "You must enter a HDD device from /dev"
-                                	fi
+						echo "You must enter a HDD device from /dev"
+					fi
 				fi
-                        done
+			done
 
 			while true; do
 				printf "Enter the minimum temperature:"
@@ -145,35 +148,35 @@ case $1 in
 				fi
 			done
 
-                        while true; do
-                                printf "Enter the maximum temperature (grather than $TempMin°C):"
-                                read TempMax
-                                if [ $TempMax -eq $TempMax ] 2>/dev/null;
-                                then
+			while true; do
+				printf "Enter the maximum temperature (grather than $TempMin°C):"
+				read TempMax
+				if [ $TempMax -eq $TempMax ] 2>/dev/null;
+				then
 					if [ $TempMax -gt $TempMin ];
 					then
 						ConfigCurrent="$ConfigCurrent\nMaximum Temperature=$TempMax"
-                                        	break
+						break
 					else
 						echo "The maximum temperature must be grather than $TempMin°C"
 					fi
-                                else
-                                        echo "You must enter a number";
-                                fi
-                        done
+				else
+					echo "You must enter a number";
+				fi
+			done
 
 
-                        while true; do
-                                printf "Enter PWM device:"
-                                read PwmDev
-                                if [ -e $PwmDev ];
-                                then
+			while true; do
+				printf "Enter PWM device:"
+				read PwmDev
+				if [ -e $PwmDev ];
+				then
 					ConfigCurrent="$ConfigCurrent\nPWM Device=$PwmDev"
-                                        break
-                                else
-                                        echo "The PWM device $PwmDev do\'nt exist";
-                                fi
-                        done
+					break
+				else
+					echo "The PWM device $PwmDev do\'nt exist";
+				fi
+			done
 
 			while true; do
 				printf 'Enter the PWM value for lowest RPM (0-255):'
@@ -192,80 +195,93 @@ case $1 in
 				fi
 			done
 
-                        while true; do
-                                printf "Enter the PWM value to start fan ($PwmMin-255):"
-                                read PwmStart
-                                if [ $PwmStart -le $PwmMin ];
-                                then
-                                        echo "The value must be grather or equal than $PwmMin"
-                                else
-                                        if [ $PwmStart -gt 255 ];
-                                        then
-                                                echo "The value must be lower than 256"
-                                        else
-                                                ConfigCurrent="$ConfigCurrent\nFan Start PWM=$PwmStart"
-                                                break
-                                        fi
-                                fi
-                        done
+			while true; do
+				printf "Enter the PWM value to start fan ($PwmMin-255):"
+				read PwmStart
+				if [ $PwmStart -le $PwmMin ];
+				then
+					echo "The value must be grather or equal than $PwmMin"
+				else
+					if [ $PwmStart -gt 255 ];
+					then
+						echo "The value must be lower than 256"
+					else
+						ConfigCurrent="$ConfigCurrent\nFan Start PWM=$PwmStart"
+						break
+					fi
+				fi
+			done
 
 			while   true; do
 				printf "Enter the PWM value for highest RPM ($PwmMin-255):"
-                                read PwmMax
-                                if [ $PwmMax -le $PwmMin ];
-                                then
-                                        echo "The value must be grather than $PwmMin"
-                                else
-                                        if [ $PwmMax -gt 255 ];
-                                        then
-                                                echo "The value must be lower than 256"
-                                        else
+				read PwmMax
+				if [ $PwmMax -le $PwmMin ];
+				then
+					echo "The value must be grather than $PwmMin"
+				else
+					if [ $PwmMax -gt 255 ];
+					then
+						echo "The value must be lower than 256"
+					else
 						ConfigCurrent="$ConfigCurrent\nMaximum PWM=$PwmMax"
-                                                break
-                                        fi
-                                fi
-                        done
+						break
+					fi
+				fi
+			done
 
-                        while   true; do
-                                printf "Enter the PWM value when temperature is under $TempMin (0-$PwmMin):"
-                                read PwmLow
-                                if [ $PwmLow -lt 0 ];
-                                then
-                                        echo "The value must be grather or equal than 0"
-                                else
-                                        if [ $PwmLow -ge $PwmMin ];
-                                        then
-                                                echo "The value must be lower than $PwmMin"
-                                        else
+			while   true; do
+				printf "Enter the PWM value when temperature is under $TempMin (0-$PwmMin):"
+				read PwmLow
+				if [ $PwmLow -lt 0 ];
+				then
+					echo "The value must be grather or equal than 0"
+				else
+					if [ $PwmLow -ge $PwmMin ];
+					then
+						echo "The value must be lower than $PwmMin"
+					else
 						ConfigCurrent="$ConfigCurrent\nCold PWM=$PwmLow"
-                                                break
-                                        fi
-                                fi
-                        done
+						break
+					fi
+				fi
+			done
 
 			Finish="no"
-                        while true; do
-                                printf 'Do you want to add another device? (y|n)'
-                                read LastDevice
-                                case $LastDevice in
-                                        Y|y)
-                                               break 
-                                        ;;
-                                        N|n)
-                                                Finish="yes"
+			while true; do
+				printf 'Do you want to add another device? (y|n)'
+				read LastDevice
+				case $LastDevice in
+					Y|y)
+					       break 
+					;;
+					N|n)
+						Finish="yes"
 						break
-                                        ;;
-                                esac
-                        done
-                        if [ "$Finish" = "yes" ];
-                        then
+					;;
+				esac
+			done
+			if [ "$Finish" = "yes" ];
+			then
 				echo -e "$ConfigCurrent" > $Config
 				echo -e "$ConfigCurrent" > $ConfigRun
-                                break
-                        fi
+				break
+			fi
 		done
 	;;
 	--run|-r)
+		if [ -e $Hdparm ];
+		then
+		        if [ -e $Hddtemp ];
+		        then
+		                echo "`date +"%x %X"` Requirements ok." >> $LogDir
+		        else
+		                echo "`date +"%x %X"` $Hddtemp was not found. Exit now." >> $LogDir
+		                exit 1
+		        fi
+		else
+		        echo "`date +"%x %X"` $Hdparm was not found. Exit now." >> $LogDir
+		        exit 1
+		fi
 		if [ -e $ConfigRun ];
 		then
 			echo "`date +"%x %X"` Config exists in /run. Run now." >> $LogDir
@@ -295,40 +311,40 @@ case $1 in
 						Hdd=`echo $Line | cut -c $HddInt-`
 					;;
 					"Minimum Temperature")
-                                                TempMinInt=`echo "$Line" "=" | awk '{print index($Line,"=")}'`
-                                                TempMinInt=`expr $TempMinInt + 1`
-                                                TempMin=`echo $Line | cut -c $TempMinInt-`
-                                                LineCount=`expr $LineCount + 1`
+						TempMinInt=`echo "$Line" "=" | awk '{print index($Line,"=")}'`
+						TempMinInt=`expr $TempMinInt + 1`
+						TempMin=`echo $Line | cut -c $TempMinInt-`
+						LineCount=`expr $LineCount + 1`
 					;;
 					"Maximum Temperature")
-                                                TempMaxInt=`echo "$Line" "=" | awk '{print index($Line,"=")}'`
-                                                TempMaxInt=`expr $TempMaxInt + 1`
-                                                TempMax=`echo $Line | cut -c $TempMaxInt-`
+						TempMaxInt=`echo "$Line" "=" | awk '{print index($Line,"=")}'`
+						TempMaxInt=`expr $TempMaxInt + 1`
+						TempMax=`echo $Line | cut -c $TempMaxInt-`
 					;;	
 					"PWM Device")
-                                                PwmDevInt=`echo "$Line" "=" | awk '{print index($Line,"=")}'`
-                                                PwmDevInt=`expr $PwmDevInt + 1`
-                                                PwmDev=`echo $Line | cut -c $PwmDevInt-`
+						PwmDevInt=`echo "$Line" "=" | awk '{print index($Line,"=")}'`
+						PwmDevInt=`expr $PwmDevInt + 1`
+						PwmDev=`echo $Line | cut -c $PwmDevInt-`
 					;;
 					"Minimum PWM")
-                                                PwmMinInt=`echo "$Line" "=" | awk '{print index($Line,"=")}'`
-                                                PwmMinInt=`expr $PwmMinInt + 1`
-                                                PwmMin=`echo $Line | cut -c $PwmMinInt-`
+						PwmMinInt=`echo "$Line" "=" | awk '{print index($Line,"=")}'`
+						PwmMinInt=`expr $PwmMinInt + 1`
+						PwmMin=`echo $Line | cut -c $PwmMinInt-`
 					;;
 					"Fan Start PWM")
-                                                PwmStartInt=`echo "$Line" "=" | awk '{print index($Line,"=")}'`
-                                                PwmStartInt=`expr $PwmStartInt + 1`
-                                                PwmStart=`echo $Line | cut -c $PwmStartInt-`
+						PwmStartInt=`echo "$Line" "=" | awk '{print index($Line,"=")}'`
+						PwmStartInt=`expr $PwmStartInt + 1`
+						PwmStart=`echo $Line | cut -c $PwmStartInt-`
 					;;
 					"Maximum PWM")
-                                                PwmMaxInt=`echo "$Line" "=" | awk '{print index($Line,"=")}'`
-                                                PwmMaxInt=`expr $PwmMaxInt + 1`
-                                                PwmMax=`echo $Line | cut -c $PwmMaxInt-`
+						PwmMaxInt=`echo "$Line" "=" | awk '{print index($Line,"=")}'`
+						PwmMaxInt=`expr $PwmMaxInt + 1`
+						PwmMax=`echo $Line | cut -c $PwmMaxInt-`
 					;;
 					"Cold PWM")
-                                                PwmLowInt=`echo "$Line" "=" | awk '{print index($Line,"=")}'`
-                                                PwmLowInt=`expr $PwmLowInt + 1`
-                                                PwmLow=`echo $Line | cut -c $PwmLowInt-`
+						PwmLowInt=`echo "$Line" "=" | awk '{print index($Line,"=")}'`
+						PwmLowInt=`expr $PwmLowInt + 1`
+						PwmLow=`echo $Line | cut -c $PwmLowInt-`
 					;;
 					*)
 						echo "`date +"%x %X"` Illegal Line:$Line" >> $LogDir
@@ -362,6 +378,6 @@ case $1 in
 			else
 				NewDevice=true
 			fi
-                done < $ConfigRun
+		done < $ConfigRun
 	;;
 esac
