@@ -427,7 +427,7 @@ case $1 in
 												        if [ "`echo $HddRefState | cut -c 27-`" = "standby" ];
 													then
 														HddState=`$Hdparm -C $Hdd`
-														if [ "`echo $HddRefState | cut -c 27-`" = "standby" ];
+														if [ "`echo $HddState | cut -c 27-`" = "standby" ];
 														then
 														echo "`date +"%x %X"` Harddisk is already in standby. Nothing to do." >> $LogDir
 														else
