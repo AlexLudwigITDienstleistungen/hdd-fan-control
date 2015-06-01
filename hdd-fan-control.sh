@@ -137,6 +137,51 @@ case $1 in
 			done
 
 			while true; do
+				printf "Do you want to declare a referenc HDD for standby? Ohterwise the hdd won\'t go to sleep. (y/n):"
+				read HddRefOpt
+				case $HddRefOpt in
+					Y|y)
+						ConfigCurrent="$ConfigCurrent\nHarddisk Reference Option=y"
+						printf "Enter the HDD to handle standby (/dev/sdx):"
+						read HddRef
+						HddRefPath=`echo "$HddRef" | cut -c -7`
+						if [ "$HddRefPath" =  "/dev/sd" ];
+						then
+							HddRevVolume=`echo "$HddRef" | cut -c 9-`
+							if [ "$HddRefVolume" = "" ];
+							then
+								ConfigCurrent="$ConfigCurrent\nHarddisk Reference=$HddRef"
+								break
+							else
+								echo "You must select a HDD device not a volume."
+							fi
+						else
+							if [ "$HdRefdPath" = "/dev/hd" ];
+							then
+								HddRefVolume=`echo "$HddRef" | cut -c 9-`
+								if [ "$HddRefVolume" = "" ];
+								then
+									ConfigCurrent="$ConfigCurrent\nHarddisk Reference=$HddRef"
+									break
+								else
+									echo "You must select a HDD device not a volume."
+								fi
+							else
+								echo "You must enter a HDD device from /dev"
+							fi
+						fi
+					;;
+					N|n)
+						ConfigCurrent="$ConfigCurrent\nHarddisk Reference Option=n"
+						break
+					;;
+					*)
+						echo "Please Enter y or n."
+					;;
+				esac
+			done
+
+			while true; do
 				printf "Enter the minimum temperature:"
 				read TempMin
 				if [ $TempMin -eq $TempMin ] 2>/dev/null;
@@ -310,6 +355,16 @@ case $1 in
 						HddInt=`expr $HddInt + 1`
 						Hdd=`echo $Line | cut -c $HddInt-`
 					;;
+					"Harddisk Reference Option")
+						HddRefOptInt=`echo "$Line" "=" | awk '{print index($Line,"=")}'`
+                                                HddRefOptInt=`expr $HddRefOptInt + 1`
+                                                HddRefOpt=`echo $Line | cut -c $HddRefOptInt-`
+					;;
+                                        "Harddisk Reference")
+                                                HddRefInt=`echo "$Line" "=" | awk '{print index($Line,"=")}'`
+                                                HddRefInt=`expr $HddRefInt + 1`
+                                                HddRef=`echo $Line | cut -c $HddRefInt-`
+                                        ;;
 					"Minimum Temperature")
 						TempMinInt=`echo "$Line" "=" | awk '{print index($Line,"=")}'`
 						TempMinInt=`expr $TempMinInt + 1`
@@ -366,7 +421,28 @@ case $1 in
 										then
 											if [ "$PwmLow" != "" ];
 											then
-												control
+												if [ "$HddRefOpt" = "y" ];
+												then
+													HddRefState=`$Hdparm -C $HddRef`
+												        if [ "`echo $HddRefState | cut -c 27-`" = "standby" ];
+													then
+														HddState=`$Hdparm -C $Hdd`
+														if [ "`echo $HddRefState | cut -c 27-`" = "standby" ];
+														then
+														echo "`date +"%x %X"` Harddisk is already in standby. Nothing to do." >> $LogDir
+														else
+															echo "`date +"%x %X"` Reference Harddisk is in standby." >> $LogDir
+															printf "`date +"%x %X"` Go to standby now:" >> $LogDir
+															echo `$Hdparm -y $Hdd` >> $LogDir
+														fi
+													else
+														echo "`date +"%x %X"` Reference Harddisk is in active. Continue controlling." >> $LogDir
+														control
+													fi
+												else
+													echo "`date +"%x %X"` Reference Harddisk is not configured. Continue without standby support." >> $LogDir
+													control
+												fi
 											fi
 										fi
 									fi
