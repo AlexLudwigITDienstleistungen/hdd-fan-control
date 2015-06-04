@@ -58,7 +58,7 @@ control()
 							else
 								echo "$PwmResult" >> $LogDir
 							fi
-							echo "`date +"%x %X"` Waiting 5 seconds."
+							echo "`date +"%x %X"` Waiting 5 seconds." >> $LogDir
 							`sleep 4s`
 							printf "`date +"%x %X"` Fan is now running. Setting to $PwmCommand:" >> $LogDir
 							PwmResult=`echo $PwmCommand >> $PwmDev`
