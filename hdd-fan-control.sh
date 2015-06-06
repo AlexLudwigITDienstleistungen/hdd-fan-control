@@ -429,7 +429,21 @@ case $1 in
 														HddState=`$Hdparm -C $Hdd`
 														if [ "`echo $HddState | cut -c 27-`" = "standby" ];
 														then
-														echo "`date +"%x %X"` Harddisk is already in standby. Nothing to do." >> $LogDir
+															PwmState=`cat < $PwmDev`
+															if [$PwmState -eq $PwmLow ];
+															then
+																echo "`date +"%x %X"` Harddisk is already in standby. Nothing to do." >> $LogDir
+															else
+																echo "`date +"%x %X"` Harddisk is in standby but PWM signal is wrong." >> $LogDir
+                                                                                                                        	printf "`date +"%x %X"` Setting Fan now to $PwmLow:" >> $LogDir
+                                                                                                                        	PwmResult=`echo $PwmLow > $PwmDev`
+																if [ "$PwmResult" = "" ];
+																then
+																	echo "Ok." >> $LogDir
+																else
+																	echo "$PwmResult" >> $LogDir
+																fi
+															fi
 														else
 															echo "`date +"%x %X"` Reference Harddisk is in standby." >> $LogDir
 															printf "`date +"%x %X"` Go to standby now:" >> $LogDir
