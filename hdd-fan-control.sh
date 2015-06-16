@@ -9,6 +9,60 @@ Hddtemp="/usr/sbin/hddtemp"
 
 control()
 {
+	printf "`date +"%x %X"` Checking if pwm control is enabled: " >> $LogDir
+	PwmDevEnabled=`cat < $PwmDev'_enable'`
+	if [ $PwmDevEnabled -eq 1 ];
+	then
+		echo "OK." >> $LogDir
+	else
+		echo "Error. Control is in state $PwmDevEnabled." >> $LogDir
+		printf "`date +"%x %X"` Trying to activate pwm control: " >> $LogDir
+		`echo 1 > $PwmDev'_enable'`
+		PwmDevEnabled=`cat < $PwmDev'_enable'`
+		if [ $PwmDevEnabled -eq 1 ];
+		then
+			echo "OK." >> $LogDir
+		else
+			echo "Error. Pwm control couldn't be activated. Exiting now." >> $LogDir
+			break
+		fi
+	fi
+	if [ "$HddRefOpt" = "y" ];
+	then
+		HddRefState=`$Hdparm -C $HddRef`
+		if [ "`echo $HddRefState | cut -c 27-`" = "standby" ];
+		then
+				HddState=`$Hdparm -C $Hdd`
+				if [ "`echo $HddState | cut -c 27-`" = "standby" ];
+				then
+						PwmState=`cat < $PwmDev`
+						if [$PwmState -eq $PwmLow ] 2>/dev/null;
+						then
+								echo "`date +"%x %X"` Harddisk is already in standby. Nothing to do." >> $LogDir
+						else
+								echo "`date +"%x %X"` Harddisk is in standby but PWM signal is wrong." >> $LogDir
+								printf "`date +"%x %X"` Setting Fan now to $PwmLow:" >> $LogDir
+								PwmResult=`echo $PwmLow > $PwmDev`
+								if [ "$PwmResult" = "" ];
+								then
+										echo "Ok." >> $LogDir
+								else
+										echo "$PwmResult" >> $LogDir
+								fi
+						fi
+						break
+				else
+						echo "`date +"%x %X"` Reference Harddisk is in standby." >> $LogDir
+						printf "`date +"%x %X"` Go to standby now:" >> $LogDir
+						echo `$Hdparm -y $Hdd` >> $LogDir
+						break
+				fi
+		else
+				echo "`date +"%x %X"` Reference Harddisk is in active. Continue controlling." >> $LogDir
+		fi
+	else
+		echo "`date +"%x %X"` Reference Harddisk is not configured. Continue without standby support." >> $LogDir
+	fi
 	echo "`date +"%x %X"` Config imported" >> $LogDir
 	HddState=`$Hdparm -C $Hdd`
 	if [ "`echo $HddState | cut -c 27-`" = "standby" ];
@@ -96,7 +150,7 @@ case $1 in
 	--config|-c)
 		while true; do
 			while true; do
-				printf 'Enter the HDD to control Fan (/dev/sdx) ot pess l to list:'
+				printf 'Enter the HDD to control Fan (/dev/sdx) or pess l to list:'
 				read Hdd
 				case $Hdd in
 					L|l)
@@ -107,7 +161,6 @@ case $1 in
 						HddPath=`echo "$Hdd" | cut -c -7`
 						if [ "$HddPath" =  "/dev/sd" ];
 						then
-							#HddVolume=`echo "$Hdd" | cut -c 9-`
 							if [ -e $Hdd ];
 							then	
 								if [ "$ConfigCurrent" = "empty" ];
@@ -123,7 +176,6 @@ case $1 in
 							else
 						if [ "$HddPath" = "/dev/hd" ];
 							then
-								#HddVolume=`echo "$Hdd" | cut -c 9-`
 								if [ -e $Hdd ];
 								then
 						     			if [ "$ConfigCurrent" = "empty" ];
@@ -145,7 +197,7 @@ case $1 in
 			done
 
 			while true; do
-				printf "Do you want to declare a referenc HDD for standby? Ohterwise the hdd won\'t go to sleep. (y/n):"
+				printf "Do you want to declare a reference HDD for standby? Ohterwise the hdd won\'t go to sleep. (y/n):"
 				read HddRefOpt
 				case $HddRefOpt in
 					Y|y)
@@ -161,7 +213,6 @@ case $1 in
 								HddRefPath=`echo "$HddRef" | cut -c -7`
 								if [ "$HddRefPath" =  "/dev/sd" ];
 								then
-									#HddRevVolume=`echo "$HddRef" | cut -c 9-`
 									if [ -e $HddRef ];
 									then
 										ConfigCurrent="$ConfigCurrent\nHarddisk Reference=$HddRef"
@@ -237,10 +288,25 @@ case $1 in
 					*)
 						if [ -e $PwmDev ];
 						then
-							ConfigCurrent="$ConfigCurrent\nPWM Device=$PwmDev"
-							Enable="${PwmDev}_enable"
-							`echo 1 > "$Enable"`
-							break
+							printf "Checking if pwm control is enabled: "
+							PwmDevEnabled=`cat < $PwmDev'_enable'`
+							if [ $PwmDevEnabled -eq 1 ];
+							then
+								echo "OK."
+								break
+							else
+								echo "Error. Control is in state $PwmDevEnabled."
+								printf "Trying to activate pwm control: "
+								`echo 1 > $PwmDev'_enable'`
+								PwmDevEnabled=`cat < $PwmDev'_enable'`
+								if [ $PwmDevEnabled -eq 1 ];
+								then
+									echo "OK."
+									break
+								else
+									echo "Error. Pwm control couldn't be activated."
+								fi
+							fi
 						else
 							echo "The PWM device $PwmDev do\'nt exist";
 						fi
@@ -613,38 +679,6 @@ case $1 in
 											then
 												if [ "$HddRefOpt" = "y" ];
 												then
-													HddRefState=`$Hdparm -C $HddRef`
-												        if [ "`echo $HddRefState | cut -c 27-`" = "standby" ];
-													then
-														HddState=`$Hdparm -C $Hdd`
-														if [ "`echo $HddState | cut -c 27-`" = "standby" ];
-														then
-															PwmState=`cat < $PwmDev`
-															if [$PwmState -eq $PwmLow ] 2>/dev/null;
-															then
-																echo "`date +"%x %X"` Harddisk is already in standby. Nothing to do." >> $LogDir
-															else
-																echo "`date +"%x %X"` Harddisk is in standby but PWM signal is wrong." >> $LogDir
-                                                                                                                        	printf "`date +"%x %X"` Setting Fan now to $PwmLow:" >> $LogDir
-                                                                                                                        	PwmResult=`echo $PwmLow > $PwmDev`
-																if [ "$PwmResult" = "" ];
-																then
-																	echo "Ok." >> $LogDir
-																else
-																	echo "$PwmResult" >> $LogDir
-																fi
-															fi
-														else
-															echo "`date +"%x %X"` Reference Harddisk is in standby." >> $LogDir
-															printf "`date +"%x %X"` Go to standby now:" >> $LogDir
-															echo `$Hdparm -y $Hdd` >> $LogDir
-														fi
-													else
-														echo "`date +"%x %X"` Reference Harddisk is in active. Continue controlling." >> $LogDir
-														control
-													fi
-												else
-													echo "`date +"%x %X"` Reference Harddisk is not configured. Continue without standby support." >> $LogDir
 													control
 												fi
 											fi
