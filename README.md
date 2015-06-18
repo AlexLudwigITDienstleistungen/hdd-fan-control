@@ -16,6 +16,17 @@ This software requires the folowing packages:
 * hdparm
 * hddtemp
 
+### Run Program
+To run the program you need to start it with:
+
+    $ /etc/hdd-fan-control/hdd-fan-control.sh -r
+
+If you wish that the program logs the controlling you must enter a logfile like this:
+
+    $ /etc/hdd-fan-control/hdd-fan-control.sh -r /var/log/hdd-fan-control.sh
+
+If no logfile is given the program throw the logs out at /dev/null.
+
 ### Configuration:
 1. Enter the HDD to control Fan (/dev/sdx) or pess l to list:
 
