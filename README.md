@@ -36,7 +36,7 @@ This software requires the folowing packages:
 
     This is the lowest temperature to control the fan. Under this temperature the fan will be set to the lowest value which is set in point 7.
 
-. Enter the maximum temperature (grather than xy°C):
+5. Enter the maximum temperature (grather than xy°C):
 
     This is the maximum allowed temperature. Above this temperature the fan will set to the highest value which is set in point 9.
 
