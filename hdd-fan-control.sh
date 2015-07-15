@@ -36,7 +36,7 @@ control()
 				if [ "`echo $HddState | cut -c 27-`" = "standby" ];
 				then
 						PwmState=`cat < $PwmDev`
-						if [$PwmState -eq $PwmLow ] 2>/dev/null;
+						if [ $PwmState -eq $PwmLow ] 2>/dev/null;
 						then
 								echo "`date +"%x %X"` Harddisk is already in standby. Nothing to do." >> $LogDir
 						else
