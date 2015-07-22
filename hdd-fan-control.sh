@@ -2,10 +2,10 @@
 Config=/etc/hdd-fan-control/hdd-fan-control.config
 ConfigRun=/run/hdd-fan-control.config
 ConfigCurrent="empty"
-LogDir="empty"
+LogDir="/dev/null"
 Hdparm="/sbin/hdparm"
 Hddtemp="/usr/sbin/hddtemp"
-
+Bc="/usr/bin/bc"
 
 control()
 {
@@ -14,12 +14,15 @@ control()
 	if [ $PwmDevEnabled -eq 1 ];
 	then
 		echo "OK." >> $LogDir
+	elif [ $PwmDevEnabled -eq 0 ];
+	then	echo "OK." >> $LogDir
 	else
 		echo "Error. Control is in state $PwmDevEnabled." >> $LogDir
 		printf "`date +"%x %X"` Trying to activate pwm control: " >> $LogDir
 		`echo 1 > $PwmDev'_enable'`
-		PwmDevEnabled=`cat < $PwmDev'_enable'`
-		if [ $PwmDevEnabled -eq 1 ];
+		`echo 255 > $PwmDev`
+		PwmValue=`cat < $PwmDev`
+		if [ $PwmDev -eq 255 ];
 		then
 			echo "OK." >> $LogDir
 		else
@@ -36,7 +39,7 @@ control()
 				if [ "`echo $HddState | cut -c 27-`" = "standby" ];
 				then
 						PwmState=`cat < $PwmDev`
-						if [ $PwmState -eq $PwmLow ] 2>/dev/null;
+						if [$PwmState -eq $PwmLow ] 2>/dev/null;
 						then
 								echo "`date +"%x %X"` Harddisk is already in standby. Nothing to do." >> $LogDir
 						else
@@ -124,7 +127,9 @@ control()
 							fi
 						fi
 					else
-						printf "`date +"%x %X"` Setting PWM to $PwmCommand:" >> $LogDir
+						printf "`date +"%x %X"` Temperature is $HddTemp so setting PWM to " >> $LogDir
+						printf "$PwmCommand" >> $LogDir
+						printf ":" >> $LogDir
 						PwmResult=`echo $PwmCommand >> $PwmDev`
 						if [ "$PwmResult" = "" ];
 						then
@@ -293,6 +298,7 @@ case $1 in
 							if [ $PwmDevEnabled -eq 1 ];
 							then
 								echo "OK."
+								ConfigCurrent="$ConfigCurrent\nPWM Device=$PwmDev"
 								break
 							else
 								echo "Error. Control is in state $PwmDevEnabled."
@@ -302,6 +308,7 @@ case $1 in
 								if [ $PwmDevEnabled -eq 1 ];
 								then
 									echo "OK."
+									ConfigCurrent="$ConfigCurrent\nPWM Device=$PwmDev"
 									break
 								else
 									echo "Error. Pwm control couldn't be activated."
@@ -574,7 +581,13 @@ case $1 in
 		then
 		        if [ -e $Hddtemp ];
 		        then
-		                echo "`date +"%x %X"` Requirements ok." >> $LogDir
+				if [ -e $Bc ];
+				then
+		                	echo "`date +"%x %X"` Requirements ok." >> $LogDir
+				else
+					echo "`date +"%x %X"` $Bc was not found. Exit now." >> $LogDir
+					exit 1
+				fi
 		        else
 		                echo "`date +"%x %X"` $Hddtemp was not found. Exit now." >> $LogDir
 		                exit 1
@@ -610,52 +623,62 @@ case $1 in
 						HddInt=`echo "$Line" "=" | awk '{print index($Line,"=")}'`
 						HddInt=`expr $HddInt + 1`
 						Hdd=`echo $Line | cut -c $HddInt-`
+						echo "`date +"%x %X"` HDD to control: $Hdd" >> $LogDir
 					;;
 					"Harddisk Reference Option")
 						HddRefOptInt=`echo "$Line" "=" | awk '{print index($Line,"=")}'`
                                                 HddRefOptInt=`expr $HddRefOptInt + 1`
                                                 HddRefOpt=`echo $Line | cut -c $HddRefOptInt-`
+						echo "`date +"%x %X"` Enable standby monitoring: $HddRefOpt" >> $LogDir
 					;;
                                         "Harddisk Reference")
                                                 HddRefInt=`echo "$Line" "=" | awk '{print index($Line,"=")}'`
                                                 HddRefInt=`expr $HddRefInt + 1`
                                                 HddRef=`echo $Line | cut -c $HddRefInt-`
+						echo "`date +"%x %X"` Reference HDD: $HddRef" >> $LogDir
                                         ;;
 					"Minimum Temperature")
 						TempMinInt=`echo "$Line" "=" | awk '{print index($Line,"=")}'`
 						TempMinInt=`expr $TempMinInt + 1`
 						TempMin=`echo $Line | cut -c $TempMinInt-`
+						echo "`date +"%x %X"` Minimum Temperature: $TempMin" >> $LogDir
 						LineCount=`expr $LineCount + 1`
 					;;
 					"Maximum Temperature")
 						TempMaxInt=`echo "$Line" "=" | awk '{print index($Line,"=")}'`
 						TempMaxInt=`expr $TempMaxInt + 1`
 						TempMax=`echo $Line | cut -c $TempMaxInt-`
+						echo "`date +"%x %X"` Maximaum Temperature: $TempMax" >> $LogDir
 					;;	
 					"PWM Device")
 						PwmDevInt=`echo "$Line" "=" | awk '{print index($Line,"=")}'`
 						PwmDevInt=`expr $PwmDevInt + 1`
 						PwmDev=`echo $Line | cut -c $PwmDevInt-`
+						echo "`date +"%x %X"` Device to control: $PwmDev" >> $LogDir
 					;;
 					"Minimum PWM")
 						PwmMinInt=`echo "$Line" "=" | awk '{print index($Line,"=")}'`
 						PwmMinInt=`expr $PwmMinInt + 1`
 						PwmMin=`echo $Line | cut -c $PwmMinInt-`
+						echo "`date +"%x %X"` Minimum PWM Signal: $PwmMin" >> $LogDir
 					;;
 					"Fan Start PWM")
 						PwmStartInt=`echo "$Line" "=" | awk '{print index($Line,"=")}'`
 						PwmStartInt=`expr $PwmStartInt + 1`
 						PwmStart=`echo $Line | cut -c $PwmStartInt-`
+						echo "`date +"%x %X"` PWM Signal to start fan: $PwmStart" >> $LogDir
 					;;
 					"Maximum PWM")
 						PwmMaxInt=`echo "$Line" "=" | awk '{print index($Line,"=")}'`
 						PwmMaxInt=`expr $PwmMaxInt + 1`
 						PwmMax=`echo $Line | cut -c $PwmMaxInt-`
+						echo "`date +"%x %X"` Maximum PWM Signal: $PwmMax" >> $LogDir
 					;;
 					"Cold PWM")
 						PwmLowInt=`echo "$Line" "=" | awk '{print index($Line,"=")}'`
 						PwmLowInt=`expr $PwmLowInt + 1`
 						PwmLow=`echo $Line | cut -c $PwmLowInt-`
+						echo "`date +"%x %X"` PWM Signal if Temperature is to low: $PwmLow" >> $LogDir
 					;;
 					*)
 						echo "`date +"%x %X"` Illegal Line:$Line" >> $LogDir
@@ -678,6 +701,12 @@ case $1 in
 											if [ "$PwmLow" != "" ];
 											then
 												if [ "$HddRefOpt" = "y" ];
+												then
+													if [ "$HddRef" != "" ];
+													then
+														control
+													fi
+												elif [ "$HddRefOpt" = "n" ];
 												then
 													control
 												fi
