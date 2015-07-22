@@ -22,7 +22,7 @@ control()
 		`echo 1 > $PwmDev'_enable'`
 		`echo 255 > $PwmDev`
 		PwmValue=`cat < $PwmDev`
-		if [ $PwmDev -eq 255 ];
+		if [ $PwmValue -eq 255 ];
 		then
 			echo "OK." >> $LogDir
 		else
