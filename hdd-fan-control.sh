@@ -287,7 +287,7 @@ case $1 in
 				read PwmDev
 				case $PwmDev in
 					L|l)
-						PwmList=`ls --format=single-column /sys/class/hwmon/hwmon?/device/pwm?`
+						PwmList=`ls --format=single-column /sys/class/hwmon/*/pwm?`
 						echo -e "$PwmList"
 					;;
 					*)
@@ -327,7 +327,7 @@ case $1 in
 					T|t)
 						printf "Warning this will stop the fan for 5 seconds. Press any key to continue or CTRL + C to abort:"
 						read Continue
-						PwmFans=( $(ls --format=single-column /sys/class/hwmon/hwmon?/device/fan?_input) )
+						PwmFans=( $(ls --format=single-column /sys/class/hwmon/*/fan?_input) )
 						`echo 0 > $PwmDev`
 						echo "Trying to stop fan now..."
 						`sleep 5`
@@ -424,7 +424,7 @@ case $1 in
 					T|t)
 						printf "Warning this will stop your fan until the PWM value is high enuge to start. This can cause damage on your hardware. Press any key to continue or press CTRL + C to abort:"
 						read Continue
-						PwmFans=( $(ls --format=single-column /sys/class/hwmon/hwmon?/device/fan?_input) )
+						PwmFans=( $(ls --format=single-column /sys/class/hwmon/*/fan?_input) )
                                                 `echo 0 > $PwmDev`
                                                 echo "Trying to stop fan now..."
                                                 `sleep 5`
@@ -493,6 +493,7 @@ case $1 in
                                                                         SetSpeed=`expr $SetSpeed + 5`
                                                                 else
                                                                         echo "Could not get start fan speed."
+																		PwmStart=""
                                                                         break
                                                                 fi
                                                         done
@@ -504,7 +505,7 @@ case $1 in
                                                 fi
 					;;
 					*)
-						if [ $PwmStart -le $PwmMin ];
+						if [ $PwmStart -ge $PwmMin ];
 						then
 							echo "The value must be grather or equal than $PwmMin"
 						else
