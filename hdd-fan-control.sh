@@ -41,23 +41,31 @@ control()
 						PwmState=`cat < $PwmDev`
 						if [ $PwmState -eq $PwmLow ] 2>/dev/null;
 						then
-								echo "`date +"%x %X"` Harddisk is already in standby. Nothing to do." >> $LogDir
+							echo "`date +"%x %X"` Harddisk is already in standby. Nothing to do." >> $LogDir
 						else
-								echo "`date +"%x %X"` Harddisk is in standby but PWM signal is wrong." >> $LogDir
-								printf "`date +"%x %X"` Setting Fan now to $PwmLow:" >> $LogDir
-								PwmResult=`echo $PwmLow > $PwmDev`
-								if [ "$PwmResult" = "" ];
-								then
-										echo "Ok." >> $LogDir
-								else
-										echo "$PwmResult" >> $LogDir
-								fi
+							echo "`date +"%x %X"` Harddisk is in standby but PWM signal is wrong." >> $LogDir
+							printf "`date +"%x %X"` Setting Fan now to $PwmLow:" >> $LogDir
+							PwmResult=`echo $PwmLow > $PwmDev`
+							if [ "$PwmResult" = "" ];
+							then
+								echo "Ok." >> $LogDir
+							else
+								echo "$PwmResult" >> $LogDir
+							fi
 						fi
 						break
 				else
 						echo "`date +"%x %X"` Reference Harddisk is in standby." >> $LogDir
 						printf "`date +"%x %X"` Go to standby now:" >> $LogDir
 						echo `$Hdparm -y $Hdd` >> $LogDir
+						printf "`date +"%x %X"` Setting Fan now to $PwmLow:" >> $LogDir
+						PwmResult=`echo $PwmLow > $PwmDev`
+						if [ "$PwmResult" = "" ];
+						then
+							echo "Ok." >> $LogDir
+						else
+							echo "$PwmResult" >> $LogDir
+						fi
 						break
 				fi
 		else
@@ -77,8 +85,8 @@ control()
 		HddTemp=`$Hddtemp -n -q $Hdd`
 		if [ $HddTemp -lt $TempMin ];
 		then
-				printf "`date +"%x %X"` Temperature is to cold. Setting to $PwmLow" >> $LogDir
-				echo "`echo $PwmLow >> $PwmDev`" >> $LogDir
+			printf "`date +"%x %X"` Temperature is to cold. Setting to $PwmLow" >> $LogDir
+			echo "`echo $PwmLow >> $PwmDev`" >> $LogDir
 		else
 			if [ $HddTemp -ge $TempMin ];
 			then
@@ -183,7 +191,7 @@ case $1 in
 							then
 								if [ -e $Hdd ];
 								then
-						     			if [ "$ConfigCurrent" = "empty" ];
+							 			if [ "$ConfigCurrent" = "empty" ];
 									then
 										ConfigCurrent="[Device]\nHarddisk=$Hdd"
 									else
@@ -332,7 +340,7 @@ case $1 in
 						echo "Trying to stop fan now..."
 						`sleep 5`
 						PwmFansCounter=0
-                                                while [ $PwmFansCounter -lt ${#PwmFans[@]} ]; do
+												while [ $PwmFansCounter -lt ${#PwmFans[@]} ]; do
 							PwmFansSpeedStop[$PwmFansCounter]=`cat < ${PwmFans[$PwmFansCounter]}`
 							#echo ${PwmFansSpeedStop[$PwmFansCounter]}
 							PwmFansCounter=`expr $PwmFansCounter + 1`
@@ -425,87 +433,86 @@ case $1 in
 						printf "Warning this will stop your fan until the PWM value is high enuge to start. This can cause damage on your hardware. Press any key to continue or press CTRL + C to abort:"
 						read Continue
 						PwmFans=( $(ls --format=single-column /sys/class/hwmon/*/fan?_input) )
-                                                `echo 0 > $PwmDev`
-                                                echo "Trying to stop fan now..."
-                                                `sleep 5`
-                                                PwmFansCounter=0
-                                                while [ $PwmFansCounter -lt ${#PwmFans[@]} ]; do
-                                                        PwmFansSpeedStop[$PwmFansCounter]=`cat < ${PwmFans[$PwmFansCounter]}`
-                                                        #echo ${PwmFansSpeedStop[$PwmFansCounter]}
-                                                        PwmFansCounter=`expr $PwmFansCounter + 1`
-                                                done
-                                                echo "Trying to set full speed for fan now..."
-                                                `echo 255 > $PwmDev`
-                                                `sleep 5`
-                                                PwmFansCounter=0
-                                                PwmFan="empty"
-                                                while [ $PwmFansCounter -lt ${#PwmFans[@]} ]; do
-                                                        PwmFansSpeedFull[$PwmFansCounter]=`cat < ${PwmFans[$PwmFansCounter]}`
-                                                        #echo ${PwmFansSpeedFull[$PwmFansCounter]}
-                                                        PwmFansCounter=`expr $PwmFansCounter + 1`
-                                                done
-                                                `sleep 5`
-                                                PwmFansCounter=0
-                                                while [ $PwmFansCounter -lt ${#PwmFans[@]} ]; do
-                                                        #echo $PwmFansCounter
-                                                        #echo "StopSpeed:${PwmFansSpeedStop[$PwmFansCounter]}"
-                                                        #echo "FullSpeed:${PwmFansSpeedFull[$PwmFansCounter]}"
-                                                        if [ ${PwmFansSpeedStop[$PwmFansCounter]} -eq 0 ];
-                                                        then
-                                                                if [ ${PwmFansSpeedFull[$PwmFansCounter]} -gt 0 ];
-                                                                then
-                                                                        echo "It seems that the folowing Fan is controlled by $PwmDev:"
-                                                                        echo ${PwmFans[$PwmFansCounter]}
-                                                                        PwmFan=${PwmFans[$PwmFansCounter]}
-                                                                        break
-                                                                fi
-                                                        fi
-                                                        PwmFansCounter=`expr $PwmFansCounter + 1`
-                                                done
-                                                if [ $PwmFan = "empty" ];
-                                                then
-                                                        echo "This PWM device don't control a fan."
-                                                else
+						`echo 0 > $PwmDev`
+						echo "Trying to stop fan now..."
+						`sleep 5`
+						PwmFansCounter=0
+						while [ $PwmFansCounter -lt ${#PwmFans[@]} ]; do
+							PwmFansSpeedStop[$PwmFansCounter]=`cat < ${PwmFans[$PwmFansCounter]}`
+							#echo ${PwmFansSpeedStop[$PwmFansCounter]}
+							PwmFansCounter=`expr $PwmFansCounter + 1`
+						done
+						echo "Trying to set full speed for fan now..."
+						`echo 255 > $PwmDev`
+						`sleep 5`
+						PwmFansCounter=0
+						PwmFan="empty"
+						while [ $PwmFansCounter -lt ${#PwmFans[@]} ]; do
+							PwmFansSpeedFull[$PwmFansCounter]=`cat < ${PwmFans[$PwmFansCounter]}`
+							#echo ${PwmFansSpeedFull[$PwmFansCounter]}
+							PwmFansCounter=`expr $PwmFansCounter + 1`
+						done
+						`sleep 5`
+						PwmFansCounter=0
+						while [ $PwmFansCounter -lt ${#PwmFans[@]} ]; do
+							#echo $PwmFansCounter
+							#echo "StopSpeed:${PwmFansSpeedStop[$PwmFansCounter]}"
+							#echo "FullSpeed:${PwmFansSpeedFull[$PwmFansCounter]}"
+							if [ ${PwmFansSpeedStop[$PwmFansCounter]} -eq 0 ];
+							then
+								if [ ${PwmFansSpeedFull[$PwmFansCounter]} -gt 0 ];
+								then
+									echo "It seems that the folowing Fan is controlled by $PwmDev:"
+									echo ${PwmFans[$PwmFansCounter]}
+									PwmFan=${PwmFans[$PwmFansCounter]}
+									break
+								fi
+							fi
+							PwmFansCounter=`expr $PwmFansCounter + 1`
+						done
+						if [ $PwmFan = "empty" ];
+						then
+							echo "This PWM device don't control a fan."
+						else
 							echo "Stopping fan again..."
 							`echo 0 > $PwmDev`
 							`sleep 5`
-                                                        echo "Now trying to get start fan speed..."
-                                                        SetSpeed=$PwmMin
-                                                        while true; do
-                                                                `echo $SetSpeed > $PwmDev`
-                                                                printf "Set PWM to      $SetSpeed       ...     "
-                                                                `sleep 5`
-                                                                CurrentFanSpeed=`cat < $PwmFan`
-                                                                echo "$CurrentFanSpeed"
-                                                                if [ $CurrentFanSpeed -gt 0 ];
-                                                                then
+							echo "Now trying to get start fan speed..."
+							SetSpeed=$PwmMin
+							while true; do
+								`echo $SetSpeed > $PwmDev`
+								printf "Set PWM to	  $SetSpeed	   ...	 "
+								`sleep 5`
+								CurrentFanSpeed=`cat < $PwmFan`
+								echo "$CurrentFanSpeed"
+								if [ $CurrentFanSpeed -gt 0 ];
+								then
 									if [ $SetSpeed -gt $PwmMin ];
 									then
-                                                                        	SetSpeed=`expr $SetSpeed - 5`
+										SetSpeed=`expr $SetSpeed - 5`
 									fi
-                                                                        echo "The start fan speed is:$SetSpeed"
-                                                                        PwmStart=$SetSpeed
+									echo "The start fan speed is:$SetSpeed"
+									PwmStart=$SetSpeed
 									`echo 255 > $PwmDev`
-                                                                        break
-                                                                fi
-                                                                if [ $SetSpeed -lt 256 ];
-                                                                then
-                                                                        SetSpeed=`expr $SetSpeed + 5`
-                                                                else
-                                                                        echo "Could not get start fan speed."
-																		PwmStart=""
-                                                                        break
-                                                                fi
-                                                        done
-                                                        if [ "$PwmStart" != "" ];
-                                                        then
+									break
+								fi
+								if [ $SetSpeed -lt 256 ];
+								then
+									SetSpeed=`expr $SetSpeed + 5`
+								else
+									echo "Could not get start fan speed."
+									break
+								fi
+							done
+							if [ "$PwmStart" != "" ];
+							then
 								ConfigCurrent="$ConfigCurrent\nFan Start PWM=$PwmStart"
-                                                                break
-                                                        fi
-                                                fi
+								break
+							fi
+						fi
 					;;
 					*)
-						if [ $PwmStart -ge $PwmMin ];
+						if [ $PwmStart -gt $PwmMin ];
 						then
 							echo "The value must be grather or equal than $PwmMin"
 						else
@@ -537,7 +544,6 @@ case $1 in
 					fi
 				fi
 			done
-
 			while   true; do
 				printf "Enter the PWM value when temperature is under $TempMin (0-$PwmMin):"
 				read PwmLow
@@ -554,14 +560,13 @@ case $1 in
 					fi
 				fi
 			done
-
 			Finish="no"
 			while true; do
 				printf 'Do you want to add another device? (y|n)'
 				read LastDevice
 				case $LastDevice in
 					Y|y)
-					       break 
+					   break 
 					;;
 					N|n)
 						Finish="yes"
@@ -580,47 +585,47 @@ case $1 in
 	--run|-r)
 		if [ -e $Hdparm ];
 		then
-		        if [ -e $Hddtemp ];
-		        then
+			if [ -e $Hddtemp ];
+			then
 				if [ -e $Bc ];
 				then
-		                	echo "`date +"%x %X"` Requirements ok." >> $LogDir
+					echo "`date +"%x %X"` Requirements ok." >> $LogDir
 				else
 					echo "`date +"%x %X"` $Bc was not found. Exit now." >> $LogDir
 					exit 1
 				fi
-		        else
-		                echo "`date +"%x %X"` $Hddtemp was not found. Exit now." >> $LogDir
-		                exit 1
-		        fi
-		else
-		        echo "`date +"%x %X"` $Hdparm was not found. Exit now." >> $LogDir
-		        exit 1
-		fi
-		if [ -e $ConfigRun ];
-		then
-			echo "`date +"%x %X"` Config exists in /run. Run now." >> $LogDir
-		else
-			if [ -e $Config ];
-			then
-				echo "`date +"%x %X"` Config exists. Copy now to /run" >> $LogDir
-				printf "`date +"%x %X"` Copy...:" >> $LogDir
-				echo "`cp $Config $ConfigRun`" >> $LogDir
-				echo "`date +"%x %X"` Run now." >> $LogDir
 			else
-				echo "`date +"%x %X"` Config must be configurated fist with \"hdd-fan-control --config\"" >> $LogDir
-				exit 2
+				echo "`date +"%x %X"` $Hddtemp was not found. Exit now." >> $LogDir
+				exit 1
 			fi
-		fi
-		while read Line; do
-			NewDevice=true
-			if [ "$Line" != "[Device]" ];
+			else
+				echo "`date +"%x %X"` $Hdparm was not found. Exit now." >> $LogDir
+				exit 1
+			fi
+			if [ -e $ConfigRun ];
 			then
-				NewDevice=false
-				CaseNameInt=`echo "$Line" "=" | awk '{print index($Line,"=")}'`
-				CaseNameInt=`expr $CaseNameInt - 1`
-				case `echo $Line | cut -c -$CaseNameInt` in
-					"Harddisk")
+				echo "`date +"%x %X"` Config exists in /run. Run now." >> $LogDir
+			else
+				if [ -e $Config ];
+				then
+					echo "`date +"%x %X"` Config exists. Copy now to /run" >> $LogDir
+					printf "`date +"%x %X"` Copy...:" >> $LogDir
+					echo "`cp $Config $ConfigRun`" >> $LogDir
+					echo "`date +"%x %X"` Run now." >> $LogDir
+				else
+					echo "`date +"%x %X"` Config must be configurated fist with \"hdd-fan-control --config\"" >> $LogDir
+					exit 2
+				fi
+			fi
+			while read Line; do
+				NewDevice=true
+				if [ "$Line" != "[Device]" ];
+				then
+					NewDevice=false
+					CaseNameInt=`echo "$Line" "=" | awk '{print index($Line,"=")}'`
+					CaseNameInt=`expr $CaseNameInt - 1`
+					case `echo $Line | cut -c -$CaseNameInt` in
+						"Harddisk")
 						HddInt=`echo "$Line" "=" | awk '{print index($Line,"=")}'`
 						HddInt=`expr $HddInt + 1`
 						Hdd=`echo $Line | cut -c $HddInt-`
@@ -628,16 +633,16 @@ case $1 in
 					;;
 					"Harddisk Reference Option")
 						HddRefOptInt=`echo "$Line" "=" | awk '{print index($Line,"=")}'`
-                                                HddRefOptInt=`expr $HddRefOptInt + 1`
-                                                HddRefOpt=`echo $Line | cut -c $HddRefOptInt-`
+						HddRefOptInt=`expr $HddRefOptInt + 1`
+						HddRefOpt=`echo $Line | cut -c $HddRefOptInt-`
 						echo "`date +"%x %X"` Enable standby monitoring: $HddRefOpt" >> $LogDir
 					;;
-                                        "Harddisk Reference")
-                                                HddRefInt=`echo "$Line" "=" | awk '{print index($Line,"=")}'`
-                                                HddRefInt=`expr $HddRefInt + 1`
-                                                HddRef=`echo $Line | cut -c $HddRefInt-`
+					"Harddisk Reference")
+						HddRefInt=`echo "$Line" "=" | awk '{print index($Line,"=")}'`
+						HddRefInt=`expr $HddRefInt + 1`
+						HddRef=`echo $Line | cut -c $HddRefInt-`
 						echo "`date +"%x %X"` Reference HDD: $HddRef" >> $LogDir
-                                        ;;
+					;;
 					"Minimum Temperature")
 						TempMinInt=`echo "$Line" "=" | awk '{print index($Line,"=")}'`
 						TempMinInt=`expr $TempMinInt + 1`
