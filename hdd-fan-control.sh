@@ -15,7 +15,8 @@ control()
 	then
 		echo "OK." >> $LogDir
 	elif [ $PwmDevEnabled -eq 0 ];
-	then	echo "OK." >> $LogDir
+	then 
+		echo "OK." >> $LogDir
 	else
 		echo "Error. Control is in state $PwmDevEnabled." >> $LogDir
 		printf "`date +"%x %X"` Trying to activate pwm control: " >> $LogDir
@@ -32,11 +33,10 @@ control()
 	fi
 	if [ "$HddRefOpt" = "y" ];
 	then
-		HddRefState=`$Hdparm -C $HddRef`
-		if [ "`echo $HddRefState | cut -c 27-`" = "standby" ];
+		if $Hdparm -C $HddRef | grep -q standby;
 		then
 				HddState=`$Hdparm -C $Hdd`
-				if [ "`echo $HddState | cut -c 27-`" = "standby" ];
+				if $Hdparm -C $Hdd | grep -q standby;
 				then
 						PwmState=`cat < $PwmDev`
 						if [ $PwmState -eq $PwmLow ] 2>/dev/null;
@@ -69,20 +69,19 @@ control()
 						break
 				fi
 		else
-				echo "`date +"%x %X"` Reference Harddisk is in active. Continue controlling." >> $LogDir
+				echo "`date +"%x %X"` Reference Harddisk is active. Continue controlling." >> $LogDir
 		fi
 	else
 		echo "`date +"%x %X"` Reference Harddisk is not configured. Continue without standby support." >> $LogDir
 	fi
 	echo "`date +"%x %X"` Config imported" >> $LogDir
-	HddState=`$Hdparm -C $Hdd`
-	if [ "`echo $HddState | cut -c 27-`" = "standby" ];
+	if $Hdparm -C $Hdd | grep -q standby;
 	then
 		echo "`date +"%x %X"` Drive $Hdd is in Standby. Setting to $PwmLow." >> $LogDir
 		printf "`date +"%x %X"`" >> $LogDir
 		echo "`echo $PwmLow >> $PwmDev`" >> $LogDir
 	else
-		HddTemp=`$Hddtemp -n -q $Hdd`
+		HddTemp=`$Hddtemp -n -w -q $Hdd`
 		if [ $HddTemp -lt $TempMin ];
 		then
 			printf "`date +"%x %X"` Temperature is to cold. Setting to $PwmLow" >> $LogDir
@@ -163,19 +162,19 @@ case $1 in
 	--config|-c)
 		while true; do
 			while true; do
-				printf 'Enter the HDD to control Fan (/dev/sdx) or pess l to list:'
+				printf 'Enter the HDD to control Fan (/dev/sdx or /dev/hdx or /dev/disk/*) or pess l to list:'
 				read Hdd
 				case $Hdd in
 					L|l)
-						HddList=`ls --format=single-column /dev/sd?`
+						HddList=`ls --format=single-column /dev/disk/by-id/* | grep -v part`
 						echo -e "$HddList"
 					;;
 					*)
 						HddPath=`echo "$Hdd" | cut -c -7`
-						if [ "$HddPath" =  "/dev/sd" ];
+						if [ -n "`echo $Hdd | grep \"/dev/sd\"`" ];
 						then
 							if [ -e $Hdd ];
-							then	
+							then
 								if [ "$ConfigCurrent" = "empty" ];
 								then
 									ConfigCurrent="[Device]\nHarddisk=$Hdd"
@@ -186,24 +185,36 @@ case $1 in
 							else
 								echo "You must select a HDD device not a volume."
 							fi
-							else
-						if [ "$HddPath" = "/dev/hd" ];
+						elif [ -n "`echo $Hdd | grep \"/dev/hd\"`" ];
+						then
+							if [ -e $Hdd ];
 							then
-								if [ -e $Hdd ];
+								if [ "$ConfigCurrent" = "empty" ];
 								then
-							 			if [ "$ConfigCurrent" = "empty" ];
-									then
-										ConfigCurrent="[Device]\nHarddisk=$Hdd"
-									else
-										ConfigCurrent="$ConfigCurrent\n[Device]\nHarddisk=$Hdd"
-									fi
-									break
+									ConfigCurrent="[Device]\nHarddisk=$Hdd"
 								else
-									echo "You must select a HDD device not a volume."
+									ConfigCurrent="$ConfigCurrent\n[Device]\nHarddisk=$Hdd"
 								fi
+								break
 							else
-								echo "You must enter a HDD device from /dev"
+								echo "You must select a HDD device not a volume."
 							fi
+						elif [ -n "`echo $Hdd | grep \"/dev/disk/\"`" ];
+						then
+							if [ -e $Hdd ];
+							then
+								if [ "$ConfigCurrent" = "empty" ];
+								then
+									ConfigCurrent="[Device]\nHarddisk=$Hdd"
+								else
+									ConfigCurrent="$ConfigCurrent\n[Device]\nHarddisk=$Hdd"
+								fi
+								break
+							else
+								echo "You must select a HDD device not a volume."
+							fi
+						else
+							echo "You must enter a HDD device from /dev"
 						fi
 					;;
 				esac
@@ -215,16 +226,34 @@ case $1 in
 				case $HddRefOpt in
 					Y|y)
 						ConfigCurrent="$ConfigCurrent\nHarddisk Reference Option=y"
-						printf "Enter the HDD to handle standby (/dev/sdx) or press l to list:"
+						printf "Enter the HDD to handle standby (/dev/sdx /dev/hdx /dev/disk/*) or press l to list:"
 						read HddRef
 						case $HddRef in
 							L|l)
-								HddList=`ls --format=single-column /dev/sd?`
+								HddList=`ls --format=single-column /dev/disk/by-id/* | grep -v part`
 								echo -e "$HddList"
 							;;
 							*)
 								HddRefPath=`echo "$HddRef" | cut -c -7`
-								if [ "$HddRefPath" =  "/dev/sd" ];
+								if [ -n "`echo $HddRef | grep \"/dev/sd\"`" ];
+								then
+									if [ -e $HddRef ];
+									then
+										ConfigCurrent="$ConfigCurrent\nHarddisk Reference=$HddRef"
+										break
+									else
+										echo "You must select a HDD device not a volume."
+									fi
+								elif [ -n "`echo $HddRef | grep \"/dev/hd\"`" ];
+								then
+									if [ -e $HddRef ];
+									then
+										ConfigCurrent="$ConfigCurrent\nHarddisk Reference=$HddRef"
+										break
+									else
+										echo "You must select a HDD device not a volume."
+									fi
+								elif [ -n "`echo $HddRef | greo \"/dev/disk/\"`" ]
 								then
 									if [ -e $HddRef ];
 									then
@@ -234,19 +263,7 @@ case $1 in
 										echo "You must select a HDD device not a volume."
 									fi
 								else
-									if [ "$HdRefdPath" = "/dev/hd" ];
-									then
-										#HddRefVolume=`echo "$HddRef" | cut -c 9-`
-										if [ -e $HddRef ];
-										then
-											ConfigCurrent="$ConfigCurrent\nHarddisk Reference=$HddRef"
-											break
-										else
-											echo "You must select a HDD device not a volume."
-										fi
-									else
 										echo "You must enter a HDD device from /dev"
-									fi
 								fi
 							;;
 						esac
@@ -267,7 +284,7 @@ case $1 in
 				if [ $TempMin -eq $TempMin ] 2>/dev/null;
 				then
 					ConfigCurrent="$ConfigCurrent\nMinimum Temperature=$TempMin"
-					break	
+					break
 				else
 					echo "You must enter a number";
 				fi
@@ -340,9 +357,8 @@ case $1 in
 						echo "Trying to stop fan now..."
 						`sleep 5`
 						PwmFansCounter=0
-												while [ $PwmFansCounter -lt ${#PwmFans[@]} ]; do
+						while [ $PwmFansCounter -lt ${#PwmFans[@]} ]; do
 							PwmFansSpeedStop[$PwmFansCounter]=`cat < ${PwmFans[$PwmFansCounter]}`
-							#echo ${PwmFansSpeedStop[$PwmFansCounter]}
 							PwmFansCounter=`expr $PwmFansCounter + 1`
 						done
 						echo "Trying to set full speed for fan now..."
@@ -358,9 +374,6 @@ case $1 in
 						`sleep 5`
 						PwmFansCounter=0
 						while [ $PwmFansCounter -lt ${#PwmFans[@]} ]; do
-							#echo $PwmFansCounter
-							#echo "StopSpeed:${PwmFansSpeedStop[$PwmFansCounter]}"
-							#echo "FullSpeed:${PwmFansSpeedFull[$PwmFansCounter]}"
 							if [ ${PwmFansSpeedStop[$PwmFansCounter]} -eq 0 ];
 							then
 								if [ ${PwmFansSpeedFull[$PwmFansCounter]} -gt 0 ];
@@ -381,7 +394,7 @@ case $1 in
 							SetSpeed=250
 							while true; do
 								`echo $SetSpeed > $PwmDev`
-								printf "Set PWM to	$SetSpeed	...	"
+								printf "Set PWM to      $SetSpeed	...     "
 								`sleep 5`
 								CurrentFanSpeed=`cat < $PwmFan`
 								echo "$CurrentFanSpeed"
@@ -481,7 +494,7 @@ case $1 in
 							SetSpeed=$PwmMin
 							while true; do
 								`echo $SetSpeed > $PwmDev`
-								printf "Set PWM to	  $SetSpeed	   ...	 "
+								printf "Set PWM to	$SetSpeed	...   "
 								`sleep 5`
 								CurrentFanSpeed=`cat < $PwmFan`
 								echo "$CurrentFanSpeed"
@@ -527,7 +540,6 @@ case $1 in
 					;;
 				esac
 			done
-
 			while   true; do
 				printf "Enter the PWM value for highest RPM ($PwmMin-255):"
 				read PwmMax
@@ -566,7 +578,7 @@ case $1 in
 				read LastDevice
 				case $LastDevice in
 					Y|y)
-					   break 
+					   break
 					;;
 					N|n)
 						Finish="yes"
@@ -655,7 +667,7 @@ case $1 in
 						TempMaxInt=`expr $TempMaxInt + 1`
 						TempMax=`echo $Line | cut -c $TempMaxInt-`
 						echo "`date +"%x %X"` Maximaum Temperature: $TempMax" >> $LogDir
-					;;	
+					;;
 					"PWM Device")
 						PwmDevInt=`echo "$Line" "=" | awk '{print index($Line,"=")}'`
 						PwmDevInt=`expr $PwmDevInt + 1`
