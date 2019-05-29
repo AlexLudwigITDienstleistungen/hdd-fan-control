@@ -43,34 +43,38 @@ If no logfile is given the program throw the logs out at /dev/null.
 
     Here you must enter the reference HDD. The format must be the same as the Control HDD. Here you are also able to list the possible HDDs. If you list them you will fall back to point 2.
 
-4. Enter the minimum temperature:
+4. Enter the value when the hard disk is in standby mode, or press EXC to continue with default value (standby):
+
+    If your device displays a value other than Standby while the device is in Standby mode, you can set a custom value here.
+
+5. Enter the minimum temperature:
 
     This is the lowest temperature to control the fan. Under this temperature the fan will be set to the lowest value which is set in point 7.
 
-5. Enter the maximum temperature (grather than xy°C):
+6. Enter the maximum temperature (grather than xy°C):
 
     This is the maximum allowed temperature. Above this temperature the fan will set to the highest value which is set in point 9.
 
-6. Enter PWM device or press l to list:
+7. Enter PWM device or press l to list:
 
     Here you must enter the path to the pwm device which will control the fan. You can press l to get all possible devices. After entering the device it will be checked.
 
-7. Enter the PWM value for lowest RPM (0-255) or press t to test:
+8. Enter the PWM value for lowest RPM (0-255) or press t to test:
 
     This is the lowest PWM value for the fan. This value must be between 0 and 255. You can use t to test the fan to get the lowest possible value. It will be set automaticly.
 
-8. Enter the PWM value to start fan (x-255) or press t to test:
+9. Enter the PWM value to start fan (x-255) or press t to test:
 
     This is the value which is needed to start the fan. It must be between the PWM for the lowest RPM which was set in point 7 and 255. You can use t to test the fan to get the lowest possible value. It will be set automaticly.
 
-9. Enter the PWM value for highest RPM (x-255):
+10. Enter the PWM value for highest RPM (x-255):
 
     This is the highest value for the fan. 255 means means full speed. It must be between the PWM for the lowest RPM which was set in point 7 and 255.
 
-10. Enter the PWM value when temperature is under xy°C (0-x):
+11. Enter the PWM value when temperature is under xy°C (0-x):
 
     This is the PWM value which is used when the temperature is under the value which is set in point 4 or if the HDD is in standby. It must be between 0 and the PWM for the lowest RPM which was set in point 7.
 
-11. Do you want to add another device? (y|n):
+12. Do you want to add another device? (y|n):
 
     You can add another Fan which will be controlled or end the setup by entering n.
